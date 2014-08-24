@@ -25,6 +25,7 @@ define('JOOMLA_IMG_FOLDER', 'images');
 define('JOOMLA_ENTITY_TYPE', 'node');
 define('JOOMLA_DEFAULT_STATIC_NODETYPE', 'page');
 define('JOOMLA_DEFAULT_BLOG_NODETYPE', 'article');
+define('JOOMLA_VERSION_1_0_X' , TRUE);
 
 /**
  * Implementation of hook_help().
@@ -137,6 +138,11 @@ function joomla_import_form_checkboxes(&$form_state = NULL) {
     '#description' => t('If selected, any items which have already been imported, and which have been updated on the Joomla website, will be updated.'),
     '#default_value' => variable_get('joomla_update_duplicate', JOOMLA_UPDATE_DUPLICATE),
   );
+  $form['joomla_import']['joomla_version_1_0_x'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Version 1.0.x?'),
+    '#default_value' => variable_get('joomla_version_1_0_x', JOOMLA_VERSION_1_0_X),
+  );
 
   return $form;
 }
@@ -152,7 +158,7 @@ function joomla_import_form_submit($form, &$form_state) {
   }
 
   if ($form_state['values']['joomla_import_content']) {
-    joomla_import_content($form_state['values']['joomla_update_duplicate']);
+    joomla_import_content($form_state['values']['joomla_update_duplicate'], $form_state['values']['joomla_version_1_0_x']);
   }
 }
 
@@ -706,7 +712,7 @@ function joomla_import_categories($joomla_update_duplicate = NULL) {
   drupal_set_message(t('Processed @total categories (@new new, @updated updated, @failed errors)', array('@total' => $categories_total, '@new' => $categories_new, '@updated' => $categories_updated, '@failed' => $categories_failed)));
 }
 
-function joomla_import_content($joomla_update_duplicate = NULL) {
+function joomla_import_content($joomla_update_duplicate = NULL, $joomla_version_1_0_x == TRUE) {
 
   joomla_database_init();
 
@@ -817,8 +823,10 @@ function joomla_import_content($joomla_update_duplicate = NULL) {
 
     $joomla_teaser = joomla_replace_image_link($joomla_teaser);
     $joomla_body   = joomla_replace_image_link($joomla_body);
-    $joomla_body = joomla_fix_encoding($joomla_body);
-    $joomla_teaser = joomla_fix_encoding($joomla_teaser);
+    if($joomla_version_1_0_x === TRUE) {
+      $joomla_body = joomla_fix_encoding($joomla_body);
+      $joomla_teaser = joomla_fix_encoding($joomla_teaser);
+    }
 
     //in d7 we need to store body in the fields table not node_revision,so:
     $body_field = new stdClass();
@@ -986,7 +994,7 @@ function joomla_replace_mos_image($images_source, $text_source) {
 function joomla_replace_image_link($text_source) {
   //Fixs image string: src="images/
   $image_string = 'src="images/';
-  $images_replace = 'src="'. base_path() . variable_get('file_public_path', conf_path() . '/files') . "/" . variable_get('joomla_img_folder', JOOMLA_IMG_FOLDER) .'/';
+  $images_replace = 'src="/files/' . variable_get('joomla_img_folder', JOOMLA_IMG_FOLDER) .'/';
 
   $text_result = str_replace('src="images/', "$images_replace", $text_source);
 
